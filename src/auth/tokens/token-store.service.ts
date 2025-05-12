@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { Cache } from 'cache-manager';
+import { Inject } from '@nestjs/common';
 
 @Injectable()
 export class TokenStoreService {
-  private refreshTokens: string[] = [];
+  constructor(@Inject('CACHE_MANAGER') private cacheManager: Cache) {}
 
-  addToken(token: string) {
-    this.refreshTokens.push(token);
+  async setRefreshToken(userId: string, token: string, ttlSeconds: number) {
+    await this.cacheManager.set(`refreshToken:${userId}`, token, ttlSeconds);
   }
 
-  removeToken(token: string) {
-    this.refreshTokens = this.refreshTokens.filter((t) => t !== token);
+  async getRefreshToken(userId: string) {
+    return await this.cacheManager.get(`refreshToken:${userId}`);
   }
 
-  hasToken(token: string) {
-    return this.refreshTokens.includes(token);
+  async removeRefreshToken(userId: string) {
+    await this.cacheManager.del(`refreshToken:${userId}`);
   }
 }

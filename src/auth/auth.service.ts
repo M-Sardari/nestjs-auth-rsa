@@ -1,60 +1,53 @@
 import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as jwt from 'jsonwebtoken';
-import { TokenStoreService } from './tokens/token-store.service';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class AuthService {
   private privateKey: Buffer;
   private publicKey: Buffer;
 
-  constructor(private tokenStore: TokenStoreService) {
+  constructor(private redis: RedisService) {
     this.privateKey = fs.readFileSync('src/auth/keys/private.pem');
     this.publicKey = fs.readFileSync('src/auth/keys/public.pem');
   }
 
-  login(username: string, password: string) {
+  async login(username: string, password: string) {
     if (username === 'admin' && password === '123456') {
       const payload = { username };
 
       const accessToken = jwt.sign(payload, this.privateKey, {
         algorithm: 'RS256',
-        expiresIn: '1m',
+        expiresIn: '60s',
       });
 
       const refreshToken = jwt.sign(payload, this.privateKey, {
         algorithm: 'RS256',
-        expiresIn: '3m',
+        expiresIn: '7d',
       });
 
-      this.tokenStore.addToken(refreshToken);
+      await this.redis.set(refreshToken, 'valid', 7 * 24 * 3600);
 
       return { accessToken, refreshToken };
     }
     return null;
   }
 
-  verifyToken(token: string) {
-    try {
-      return jwt.verify(token, this.publicKey);
-    } catch {
-      return null;
-    }
-  }
-
-  refreshToken(oldRefreshToken: string) {
-    if (!this.tokenStore.hasToken(oldRefreshToken)) {
+  async refreshToken(refreshToken: string) {
+    const exists = await this.redis.get(refreshToken);
+    if (!exists) {
       return null;
     }
 
     try {
-      const payload = jwt.verify(oldRefreshToken, this.publicKey);
+      const payload = jwt.verify(refreshToken, this.publicKey);
       const newAccessToken = jwt.sign(
         { username: payload['username'] },
         this.privateKey,
         {
           algorithm: 'RS256',
-          expiresIn: '1m',
+          expiresIn: '60s',
         },
       );
 
@@ -64,7 +57,7 @@ export class AuthService {
     }
   }
 
-  logout(refreshToken: string) {
-    this.tokenStore.removeToken(refreshToken);
+  async logout(refreshToken: string) {
+    await this.redis.del(refreshToken);
   }
 }
