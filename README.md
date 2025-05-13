@@ -1,73 +1,127 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# NestJS JWT Authentication with Access & Refresh Tokens (RSA Public/Private Key)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A simple authentication system built with NestJS, implementing:
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- **Access Tokens** signed with a private key and verified with a public key.
+- **Refresh Tokens** signed with a private key and containing a `tokenVersion`.
+- **Refresh Token Versioning** to invalidate old refresh tokens if needed (like after password change or logging out from all devices).
+- **Guards** and **Decorators** to protect private routes.
+- **Refresh Token** stored in a **HttpOnly Secure Cookie**.
+- **Access Token** stored in frontend memory (or localStorage as a fallback).
+- **private.key** and **public.key** files for JWT signing/verification.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 📦 Features:
 
-## Installation
+- User registration
+- User login with Access and Refresh tokens
+- JWT verification with public key
+- Refresh token endpoint to get new access & refresh tokens
+- `tokenVersion` handling to invalidate old refresh tokens
+- Authentication Guard for protected routes
+- Clean, modular project structure
 
-```bash
-$ npm install
+---
+
+## 📂 Project Structure:
+
+```
+src/
+├── auth/
+│   ├── auth.controller.ts
+│   ├── auth.module.ts
+│   ├── auth.service.ts
+│   ├── jwt.strategy.ts
+│   ├── jwt.guard.ts
+│   ├── get-user.decorator.ts
+│   └── types.ts
+├── user/
+│   ├── user.entity.ts
+│   └── user.repository.ts
+├── main.ts
+├── app.module.ts
+keys/
+├── private.key
+└── public.key
+.env
 ```
 
-## Running the app
+---
+
+## 🔐 Private and Public Key
+
+The `keys/` directory contains:
+
+- `private.key` → Used to sign JWT tokens
+- `public.key` → Used to verify JWT tokens
+
+### 📌 Generate RSA keys:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+openssl genpkey -algorithm RSA -out private.key -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in private.key -out public.key
 ```
 
-## Test
+---
+
+## 🔑 Refresh Token Versioning
+
+In `user.entity.ts`:
+
+```ts
+@Column({ default: 1 })
+tokenVersion: number;
+```
+
+When generating a refresh token, the user's `tokenVersion` is added to the token payload.
+
+During verification:
+
+- The `tokenVersion` inside the refresh token is compared against the current value in the database.
+- If they don’t match → the token is considered invalid.
+
+To invalidate all refresh tokens for a user:
+
+```ts
+await this.userRepository.update(userId, {
+  tokenVersion: () => 'tokenVersion + 1',
+});
+```
+
+---
+
+## 📋 Summary:
+
+✔️ JWT authentication with RSA public/private key  
+✔️ Refresh token in HttpOnly Secure Cookie  
+✔️ Access token in frontend memory (or LocalStorage as fallback)  
+✔️ Refresh Token Versioning for invalidating old sessions  
+✔️ Auth Guard and GetUser decorator  
+✔️ Public and Private routes
+
+---
+
+## 🛠️ Install & Run:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
+npm run start:dev
 ```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 📌 .env Example:
 
-## Stay in touch
+```
+ACCESS_TOKEN_EXPIRES=15m
+REFRESH_TOKEN_EXPIRES=7d
+PRIVATE_KEY_PATH=./keys/private.key
+PUBLIC_KEY_PATH=./keys/public.key
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## ✌️ Author:
 
-Nest is [MIT licensed](LICENSE).
+Mohammad — built for clean, secure, and scalable authentication systems ⚡

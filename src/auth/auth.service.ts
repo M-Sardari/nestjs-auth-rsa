@@ -17,15 +17,23 @@ export class AuthService {
     if (username === 'admin' && password === '123456') {
       const payload = { username };
 
-      const accessToken = jwt.sign(payload, this.privateKey, {
-        algorithm: 'RS256',
-        expiresIn: '60s',
-      });
+      const accessToken = jwt.sign(
+        { username, type: 'access' },
+        this.privateKey,
+        {
+          algorithm: 'RS256',
+          expiresIn: '60s',
+        },
+      );
 
-      const refreshToken = jwt.sign(payload, this.privateKey, {
-        algorithm: 'RS256',
-        expiresIn: '7d',
-      });
+      const refreshToken = jwt.sign(
+        { username, type: 'refresh' },
+        this.privateKey,
+        {
+          algorithm: 'RS256',
+          expiresIn: '7d',
+        },
+      );
 
       await this.redis.set(refreshToken, 'valid', 7 * 24 * 3600);
 
@@ -43,7 +51,7 @@ export class AuthService {
     try {
       const payload = jwt.verify(refreshToken, this.publicKey);
       const newAccessToken = jwt.sign(
-        { username: payload['username'] },
+        { username: payload['username'], type: 'access' },
         this.privateKey,
         {
           algorithm: 'RS256',
